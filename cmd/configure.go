@@ -29,18 +29,59 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// configureCmd represents the configure command
+// Command layout/syntax: control configure <project> <key> <value>
+// First of all, we should check if the project specified (first argument) is present in the `projects` map.
+// Then, we verify if `key` is actually a valid property of the `Project` struct.
+// If so, we set the value of the property to `value`.
+// If not, we print an error message.
 var configureCmd = &cobra.Command{
 	Use:   "configure",
-	Short: "Configure a project.",
-	Run: func(cmd *cobra.Command, args []string) {
-		configType := reflect.TypeOf(lib.Project{})
-		_, present := configType.FieldByName(args[0])
-		if present {
-			fmt.Println("it's present")
-		} else {
-			fmt.Println("it's not present")
+	Short: "Configure a project",
+	Long:  `Configure a project`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 3 {
+			return fmt.Errorf("configure requires a project name, a key and a value")
 		}
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		projectName := args[0]
+		key := args[1]
+		value := args[2]
+
+		config := lib.ReadConfig()
+
+		if key != "Location" {
+			if loc := config.Projects[projectName].Location; loc == "" {
+				fmt.Printf("Warning: Location for project '%s' isn't set! Most commands won't work...\n", projectName)
+			}
+		}
+
+		if config.Projects == nil {
+			config.Projects = make(map[string]lib.Project)
+		}
+
+		if _, ok := config.Projects[projectName]; !ok {
+			fmt.Printf("Project %s not found, adding it...\n", projectName)
+			config.Projects[projectName] = lib.Project{}
+		}
+
+		project := config.Projects[projectName]
+		projectType := reflect.TypeOf(project)
+
+		if _, ok := projectType.FieldByName(key); !ok {
+			fmt.Printf("'%s' is not a valid configuration option!\n", key)
+			return
+		}
+
+		projectValue := reflect.ValueOf(&project).Elem()
+		projectField := projectValue.FieldByName(key)
+		projectField.SetString(value)
+		fmt.Printf("Setting %s to %s...\n", key, value)
+
+		config.Projects[projectName] = project
+		lib.WriteConfig(config)
+		fmt.Println("Wrote config!")
 	},
 }
 

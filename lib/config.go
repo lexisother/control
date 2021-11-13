@@ -28,7 +28,9 @@ func ReadConfig() Config {
 	cfg := &Config{}
 	cfgFile, err := os.Open(getConfigPath())
 	if err != nil {
-		fmt.Printf("Failed to open config: %s\n", err.Error())
+		fmt.Printf("Failed to open config: %s\nCreating the config...\n", err.Error())
+		WriteConfig(*cfg)
+		cfgFile, _ = os.Open(getConfigPath())
 	}
 	defer cfgFile.Close()
 	if json.NewDecoder(cfgFile).Decode(cfg) != nil {
