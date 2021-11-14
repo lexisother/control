@@ -23,6 +23,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/lexisother/control/lib"
@@ -51,12 +52,6 @@ var configureCmd = &cobra.Command{
 
 		config := lib.ReadConfig()
 
-		if key != "Location" {
-			if loc := config.Projects[projectName].Location; loc == "" {
-				fmt.Printf("Warning: Location for project '%s' isn't set! Most commands won't work...\n", projectName)
-			}
-		}
-
 		if config.Projects == nil {
 			config.Projects = make(map[string]lib.Project)
 		}
@@ -67,6 +62,23 @@ var configureCmd = &cobra.Command{
 		}
 
 		project := config.Projects[projectName]
+
+		if key != "Location" {
+			if project.Location == "" {
+				fmt.Printf("Warning: Location for project '%s' isn't set!\n", projectName)
+				return
+			}
+		} else {
+			if _, err := os.Stat(value); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Printf("Location '%s' doesn't exist or isn't a valid path!\n", value)
+					return
+				} else {
+					fmt.Printf("Something went wrong, but we have no idea what.\nHere's the error: %s", err)
+				}
+			}
+		}
+
 		projectType := reflect.TypeOf(project)
 
 		if _, ok := projectType.FieldByName(key); !ok {
